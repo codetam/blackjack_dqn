@@ -18,7 +18,7 @@ MODEL_NAME="128x64"
 DISCOUNT = 0.99
 UPDATE_TARGET_EVERY = 5
 LEARNING_RATE = 0.01
-LOAD_MODEL = None
+LOAD_MODEL = "models/128x64_____0.18avg__1701277765.model"
 
 # Own Tensorboard class
 class ModifiedTensorBoard(TensorBoard):

@@ -12,10 +12,10 @@ if not os.path.isdir('models'):
 
 TRAIN = True
 
-gpus = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(gpus[0], True)
-logical_gpus = tf.config.list_logical_devices('GPU')
-print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+# gpus = tf.config.list_physical_devices('GPU')
+# tf.config.experimental.set_memory_growth(gpus[0], True)
+# logical_gpus = tf.config.list_logical_devices('GPU')
+# print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
 
 EPISODES = 50_000
 # Exploration settings
