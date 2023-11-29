@@ -1,5 +1,4 @@
-import random
-from gamecode import print_gamestate, hit, dealer_turn, turn_init, get_card_num
+from gamecode import print_gamestate, hit, dealer_turn, turn_init, get_card_num, calculate_sum
 
 import gym
 from gym import spaces
@@ -15,12 +14,7 @@ class BlackjackEnv(gym.Env):
         # 0 -> Stand
         # 1 -> Hit
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Tuple(
-            # First 10 values are normalized cards out,
-            # Second 10 values are normalized cards in hand,
-            # Third MultiBinary value has a 1 in correspondence with the dealer's card
-            (spaces.Box(0, 1, shape=(10,)), spaces.Box(0, 1, shape=(10,)), spaces.MultiBinary(10))
-        )
+        self.observation_space = spaces.Box(0, 1, shape=(13,))
         self.num_decks = num_decks
         self.turn = 0
         self.max_turn = 13
@@ -28,23 +22,18 @@ class BlackjackEnv(gym.Env):
 
     def _get_obs(self):
         # normalization of cards out
-        cards_out_obs = np.empty((10,), dtype=np.float32)
-        cards_out_obs[:-1] = self.cards_out[:-1] / (4 * self.num_decks)
-        cards_out_obs[-1] = self.cards_out[-1] / (16 * self.num_decks)
+        box_obs = np.empty((13,), dtype=np.float32)
+        box_obs[:9] = self.cards_out[:-1] / (4 * self.num_decks)
+        box_obs[9] = self.cards_out[-1] / (16 * self.num_decks)
         
-        # normalization of player cards
-        player_nums_obs = np.zeros((10,), dtype=np.float32)
-        for card in self.player_cards:
-            if card == 0:
-                break
-            num = get_card_num(card)
-            if num == 10:
-                player_nums_obs[num - 1] += 1 / (16 * self.num_decks)
-            else:
-                player_nums_obs[num - 1] += 1 / (4 * self.num_decks)
-        dealer_nums_obs = np.zeros((10,), dtype=np.int8)
-        dealer_nums_obs[get_card_num(self.dealer_cards[0]) - 1] = 1
-        return (cards_out_obs, player_nums_obs, dealer_nums_obs)
+        # normalization of player sum and dealer card
+        box_obs[10] = calculate_sum(self.player_cards) / 21
+        box_obs[11] = get_card_num(self.dealer_cards[0]) / 10
+        player_card_numbers = np.array([get_card_num(card) for card in self.player_cards])
+        box_obs[12] = 0
+        if 1 in player_card_numbers:
+            box_obs[12] = 1
+        return (box_obs)
     
     def reset(self, seed = None):
         if self.turn % self.max_turn == 0:

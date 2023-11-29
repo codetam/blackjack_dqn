@@ -44,7 +44,6 @@ if TRAIN:
         # Reset environment and get initial state
         current_state = env.reset()
         done = False
-        episode_memory = deque()
         while not done:
             if np.random.random() > epsilon:
                 # Get action from Q table
@@ -54,19 +53,16 @@ if TRAIN:
                 action = np.random.randint(0, env.action_space.n)
 
             new_state, reward, done, _ = env.step(action)
+            # Transform new continous state to new discrete state and count reward
             episode_reward += reward
             if SHOW_PREVIEW and not episode % AGGREGATE_STATS_EVERY:
                 env.render()
-            episode_memory.append((current_state, action, reward, new_state, done))
 
-            current_state = new_state
-
-        # Wait for the final reward, then update all previous instances
-        final_rewad = reward
-        for index, (current_state, action, reward, new_current_state, done) in enumerate(episode_memory):
-            agent.update_replay_memory((current_state, action, final_rewad, new_current_state, done))
+            agent.update_replay_memory((current_state, action, reward, new_state, done))
             agent.train(done)
 
+            current_state = new_state
+        
         # Append episode reward to a list and log stats (every given number of episodes)
         ep_rewards.append(episode_reward)
         if not episode % AGGREGATE_STATS_EVERY or episode == 1:
@@ -83,29 +79,3 @@ if TRAIN:
         if epsilon > MIN_EPSILON:
             epsilon *= EPSILON_DECAY
             epsilon = max(MIN_EPSILON, epsilon)
-else:
-    for episode in range(15):
-        # Reset environment and get initial state
-        current_state = env.reset()
-        done = False
-        episode_memory = deque()
-        while not done:
-            if np.random.random() > epsilon:
-                # Get action from Q table
-                action = np.argmax(agent.get_qs(current_state))
-            else:
-                # Get random action
-                action = np.random.randint(0, env.action_space.n)
-
-            new_state, reward, done, _ = env.step(action)
-            if SHOW_PREVIEW and not episode % AGGREGATE_STATS_EVERY:
-                env.render()
-            episode_memory.append((current_state, action, reward, new_state, done))
-
-            current_state = new_state
-
-        # Wait for the final reward, then update all previous instances
-        final_rewad = reward
-        for index, (current_state, action, reward, new_current_state, done) in enumerate(episode_memory):
-            print((current_state, action, final_rewad, new_current_state, done))
-            agent.update_replay_memory((current_state, action, final_rewad, new_current_state, done))
