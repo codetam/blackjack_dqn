@@ -10,7 +10,7 @@ from collections import deque
 if not os.path.isdir('models'):
     os.makedirs('models')
 
-TRAIN = False
+TRAIN = True
 
 gpus = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(gpus[0], True)
@@ -20,8 +20,8 @@ print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
 EPISODES = 50_000
 # Exploration settings
 epsilon = 1  # not a constant, going to be decayed
-EPSILON_DECAY = 0.995
-MIN_EPSILON = 0.1
+EPSILON_DECAY = 0.99
+MIN_EPSILON = 0.01
 
 #  Stats settings
 AGGREGATE_STATS_EVERY = 50  # episodes

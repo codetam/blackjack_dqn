@@ -11,11 +11,12 @@ import os
 
 REPLAY_MEMORY_SIZE = 10_000
 MIN_REPLAY_MEMORY_SIZE = 1_000
-MINIBATCH_SIZE = 256
+MINIBATCH_SIZE = 128
 MODEL_NAME="128x64"
 DISCOUNT = 0.99
 UPDATE_TARGET_EVERY = 5
-LOAD_MODEL = "models/128x64_____1.00max____0.00avg___-1.00min__1701091367.model"
+LEARNING_RATE = 0.1
+LOAD_MODEL = "models/128x64_____0.04avg__1701208440.model"
 
 # Own Tensorboard class
 class ModifiedTensorBoard(TensorBoard):
@@ -78,7 +79,7 @@ class DQNAgent:
             model.add(Dense(128, activation="relu", input_shape=(30,)))
             model.add(Dense(64, activation="relu"))
             model.add(Dense(self.env.action_space.n, activation="linear"))
-            model.compile(loss="mse", optimizer=Adam(learning_rate=0.001), metrics=['accuracy'])
+            model.compile(loss="mse", optimizer=Adam(learning_rate=LEARNING_RATE), metrics=['accuracy'])
         return model
     
     def update_replay_memory(self, transition):
@@ -97,17 +98,17 @@ class DQNAgent:
         current_qs_list = self.model.predict(current_states, verbose=0)
 
         new_current_states = np.reshape([transition[3] for transition in minibatch], (MINIBATCH_SIZE, 30))
-        future_qs_list = self.target_model.predict(new_current_states, verbose=0)
+        # future_qs_list = self.target_model.predict(new_current_states, verbose=0)
 
         X = []
         y = []
 
         for index, (current_state, action, reward, new_current_state, done) in enumerate(minibatch):
-            if not done:
-                max_future_q = np.max(future_qs_list[index])
-                new_q = reward + DISCOUNT * max_future_q
-            else:
-                new_q = reward # since there is no future q
+            # if not done:
+            #     max_future_q = np.max(future_qs_list[index])
+            #     new_q = reward + DISCOUNT * max_future_q
+            #else:
+            new_q = reward # since there is no future q
             
             current_qs = current_qs_list[index]
             current_qs[action] = new_q
