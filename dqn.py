@@ -11,14 +11,14 @@ import os
 
 OBS_SPACE_SIZE = 13
 
-REPLAY_MEMORY_SIZE = 10_000
-MIN_REPLAY_MEMORY_SIZE = 1_000
+REPLAY_MEMORY_SIZE = 20_000
 MINIBATCH_SIZE = 128
+MIN_REPLAY_MEMORY_SIZE = MINIBATCH_SIZE * 10
 MODEL_NAME="128x64"
 DISCOUNT = 0.99
 UPDATE_TARGET_EVERY = 5
 LEARNING_RATE = 0.001
-LOAD_MODEL = "models/128x64_____0.12avg__1701320928.model"
+LOAD_MODEL = None
 
 # Own Tensorboard class
 class ModifiedTensorBoard(TensorBoard):
@@ -76,12 +76,23 @@ class ReplayBuffer():
         importance_normalized = importance / max(importance)
         return importance_normalized
 
-    def sample(self, batch_size, alpha=1.0):
+    def sample_all(self, batch_size, alpha=1.0):
         sample_probs = self.get_probabilities(alpha)
         sample_indices = random.choices(range(len(self.buffer)), k=batch_size, weights=sample_probs)
         samples = [self.buffer[pos] for pos in sample_indices]
         importance = self.get_importance(sample_probs[sample_indices])
         return samples, importance, sample_indices
+    
+    def sample(self, batch_size, alpha=1.0):
+        # trova indici a caso
+        random_indices = random.sample(range(len(self.buffer)), batch_size * 10)
+        # trova le priorità associate a ciascun indice
+        priorities = np.array([self.priorities[index] for index in random_indices])
+        # trova gli indici in base alle priorità
+        indices = random.choices(random_indices, k=batch_size, weights=priorities)
+        samples = [self.buffer[pos] for pos in indices]
+        importance = self.get_importance(self.get_probabilities(alpha)[indices])
+        return samples, importance, indices
     
     def set_priorities(self, indices, errors, offset=0.1):
         for i, e in zip(indices, errors):
@@ -101,7 +112,7 @@ class DQNAgent:
 
         # epsilon
         self.epsilon = 1
-        self.eps_decay = 0.99
+        self.eps_decay = 0.99995
         self.eps_min = 0.1
         
         self.replay_buffer = ReplayBuffer(maxlen=10000)
@@ -120,6 +131,7 @@ class DQNAgent:
         else:
             model = Sequential()
             model.add(Dense(128, activation="relu", input_shape=(OBS_SPACE_SIZE,)))
+            model.add(Dense(128, activation="relu"))
             model.add(Dense(64, activation="relu"))
             model.add(Dense(self.env.action_space.n, activation="linear"))
             model.compile(loss=self.weighted_mse_loss, optimizer=Adam(learning_rate=LEARNING_RATE), metrics=['accuracy'], run_eagerly=True)
@@ -129,7 +141,7 @@ class DQNAgent:
         importance_float32 = tf.cast(self.importance_in, dtype=tf.float32)
         importance_reshaped = tf.reshape(importance_float32, [-1, 1])
         td_error = y_true - y_pred
-        self.losses = tf.multiply(tf.square(td_error), importance_reshaped)
+        self.losses = tf.square(td_error) * importance_reshaped
         return tf.reduce_mean(self.losses)
 
     def get_qs(self, state):
@@ -163,10 +175,10 @@ class DQNAgent:
         if self.replay_buffer.len() < MIN_REPLAY_MEMORY_SIZE:
             return
         
-        minibatch, importance, indices = self.replay_buffer.sample(MINIBATCH_SIZE)
+        minibatch, importance, indices = self.replay_buffer.sample_all(MINIBATCH_SIZE)
         self.importance_in = importance**(1-self.epsilon)
         X, y = self.create_train_dataset(minibatch)
-
+        
         self.model.fit(np.array(X), np.array(y), batch_size = MINIBATCH_SIZE, 
                        verbose=0, shuffle=False, callbacks=[self.tensorboard] if done else None)
         

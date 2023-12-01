@@ -4,21 +4,28 @@ from tqdm import tqdm
 import time
 import os
 import tensorflow as tf
+import time
 
 if not os.path.isdir('models'):
     os.makedirs('models')
 
 TRAIN = True
 
-gpus = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(gpus[0], True)
-logical_gpus = tf.config.list_logical_devices('GPU')
-print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+os.environ["OMP_NUM_THREADS"] = "16"
+tf.config.threading.set_inter_op_parallelism_threads(8) 
+tf.config.threading.set_intra_op_parallelism_threads(8)
+os.environ["TF_ENABLE_MKL_NATIVE_FORMAT"] = "1"
 
-EPISODES = 50_000
+
+# gpus = tf.config.list_physical_devices('GPU')
+# tf.config.experimental.set_memory_growth(gpus[0], True)
+# logical_gpus = tf.config.list_logical_devices('GPU')
+# print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+
+EPISODES = 60_000
 
 #  Stats settings
-AGGREGATE_STATS_EVERY = 50  # episodes
+AGGREGATE_STATS_EVERY = 200  # episodes
 SHOW_PREVIEW = False
 
 # For stats
@@ -46,7 +53,6 @@ if TRAIN:
             episode_reward += reward
             if SHOW_PREVIEW and not episode % AGGREGATE_STATS_EVERY:
                 env.render()
-
             agent.train(current_state, action, reward, new_state, done)
             current_state = new_state
         
@@ -59,7 +65,7 @@ if TRAIN:
             agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward, epsilon=agent.epsilon)
 
             # Save model, but only when min reward is greater or equal a set value
-            if episode % 5000 == 0:
+            if episode % 5000 == 0 or average_reward > 0.2:
                 agent.model.save(f'models/128x64__{average_reward:_>7.2f}avg__{int(time.time())}.model')
 
-        tf.keras.backend.clear_session()
+        # tf.keras.backend.clear_session()
