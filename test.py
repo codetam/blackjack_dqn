@@ -22,10 +22,10 @@ os.environ["TF_ENABLE_MKL_NATIVE_FORMAT"] = "1"
 # logical_gpus = tf.config.list_logical_devices('GPU')
 # print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
 
-EPISODES = 60_000
+EPISODES = 120_000
 
 #  Stats settings
-AGGREGATE_STATS_EVERY = 200  # episodes
+AGGREGATE_STATS_EVERY = 500  # episodes
 SHOW_PREVIEW = False
 
 # For stats
@@ -60,12 +60,12 @@ if TRAIN:
         ep_rewards.append(episode_reward)
         if not episode % AGGREGATE_STATS_EVERY or episode == 1:
             average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward, epsilon=agent.epsilon)
+            validation = agent.validate(steps=100)
+            agent.tensorboard.update_stats(train_avg=average_reward, validation_avg=validation, epsilon=agent.epsilon)
 
             # Save model, but only when min reward is greater or equal a set value
-            if episode % 5000 == 0 or average_reward > 0.2:
-                agent.model.save(f'models/128x64__{average_reward:_>7.2f}avg__{int(time.time())}.model')
+            if episode % 15000 == 0 or validation > 0.2:
+                agent.model.save(f'models/{agent.get_model_name()}__{validation:_>7.2f}avg__{int(time.time())}.model')
 
         # tf.keras.backend.clear_session()
+
