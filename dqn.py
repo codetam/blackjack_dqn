@@ -137,7 +137,7 @@ class DQNAgent:
             model.compile(loss=self.weighted_mse_loss, optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'], run_eagerly=True)
         else:
             model = Sequential()
-            model.add(Dense(128, activation="relu", input_shape=len(self.obs_space_size)))
+            model.add(Dense(128, activation="relu", input_shape=(self.obs_space_size,)))
             model.add(Dense(128, activation="relu"))
             model.add(Dense(64, activation="relu"))
             model.add(Dense(self.env.action_space.n, activation="linear"))
