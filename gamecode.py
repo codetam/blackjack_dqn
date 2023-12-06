@@ -24,7 +24,7 @@ def get_suit(card):
 def calculate_sum(cards):
     card_numbers = np.array([get_card_num(card) for card in cards])
     result = np.sum(card_numbers)
-    if 1 in card_numbers and (result + 10) < 21:
+    if 1 in card_numbers and (result + 10) <= 21:
         result = sum(card_numbers) + 10
     if result > 21:
         result = -1

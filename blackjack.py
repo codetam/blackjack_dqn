@@ -13,7 +13,7 @@ class BlackjackEnv(gym.Env):
     def __init__(self, num_decks):
         # 0 -> Stand
         # 1 -> Hit
-        self.action_space = spaces.Discrete(2)
+        self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(0, 1, shape=(13,))
         self.num_decks = num_decks
         self.turn = 0
@@ -29,9 +29,12 @@ class BlackjackEnv(gym.Env):
         # normalization of player sum and dealer card
         box_obs[10] = calculate_sum(self.player_cards) / 21
         box_obs[11] = get_card_num(self.dealer_cards[0]) / 10
-        player_card_numbers = np.array([get_card_num(card) for card in self.player_cards])
+
         box_obs[12] = 0
-        if 1 in player_card_numbers:
+        player_card_numbers = np.array([get_card_num(card) for card in self.player_cards])
+        hard_sum = np.sum(player_card_numbers)
+        if 1 in player_card_numbers and (hard_sum + 10) <= 21:
+            # The current sum is soft
             box_obs[12] = 1
         return (box_obs)
     
@@ -58,32 +61,40 @@ class BlackjackEnv(gym.Env):
     def step(self, action):
         assert self.action_space.contains(action)
         is_done = True
+        # player chose to stand
+        if action == 0:
+            reward = self.agent_has_finished(False, 1)
         # player chose to hit
-        if action == 1:
+        elif action == 1:
             self.player_cards, self.deck, self.cards_out, result = hit(self.player_cards, self.deck, self.cards_out)
             if result == -1:
                 # player has busted
-                reward = self.agent_has_finished(True)
+                reward = self.agent_has_finished(True, 1)
             elif result == 21:
-                reward = self.agent_has_finished(False)
+                reward = self.agent_has_finished(False, 1)
             else:
                 reward = 0
                 is_done = False
-        # player chose to stand
+        # player chose to double down
         else:
-            reward = self.agent_has_finished(False)
+            self.player_cards, self.deck, self.cards_out, result = hit(self.player_cards, self.deck, self.cards_out)
+            if result == -1:
+                # player has busted
+                reward = self.agent_has_finished(True, 2)
+            else:
+                reward = self.agent_has_finished(False, 2)
 
         observation = self._get_obs()
         return observation, reward, is_done, {}
         
-    def agent_has_finished(self, busted):
+    def agent_has_finished(self, busted, factor):
         if busted == False:
             self.dealer_cards, self.deck, self.cards_out, result = dealer_turn(self.dealer_cards, 
                                                     self.player_cards, self.deck, self.cards_out)
         else:
             result = -1
         # Reward is either -1, 0 or 1
-        reward = result
+        reward = factor * result
         return reward
     
     def render(self):
