@@ -9,7 +9,7 @@ import random
 import time
 import os
 
-MODEL_NAME="128x128x64"
+MODEL_NAME="128x64-noexp"
 LOAD_MODEL = None
 
 # Own Tensorboard class
@@ -49,58 +49,25 @@ class ModifiedTensorBoard(TensorBoard):
 class ReplayBuffer():
     def __init__(self, maxlen):
         self.buffer = deque(maxlen=maxlen)
-        self.priorities = deque(maxlen=maxlen)
 
     def len(self):
         return len(self.buffer)
 
     def add(self, experience):
         self.buffer.append(experience)
-        self.priorities.append(max(self.priorities, default=1))
 
-    def get_probabilities(self, alpha):
-        scaled_priorities = np.array(self.priorities) ** alpha
-        sample_probabilities = scaled_priorities / sum(scaled_priorities)
-        return sample_probabilities
-
-    def get_importance(self, probabilities):
-        importance = 1/len(self.buffer) * 1/probabilities
-        importance_normalized = importance / max(importance)
-        return importance_normalized
-
-    def sample_all(self, batch_size, alpha=1.0):
-        sample_probs = self.get_probabilities(alpha)
-        sample_indices = random.choices(range(len(self.buffer)), k=batch_size, weights=sample_probs)
-        samples = [self.buffer[pos] for pos in sample_indices]
-        importance = self.get_importance(sample_probs[sample_indices])
-        return samples, importance, sample_indices
-    
-    def sample(self, batch_size, alpha=1.0):
-        # trova indici a caso
-        random_indices = random.sample(range(len(self.buffer)), batch_size * 10)
-        # trova le priorità associate a ciascun indice
-        priorities = np.array([self.priorities[index] for index in random_indices])
-        # trova gli indici in base alle priorità
-        indices = random.choices(random_indices, k=batch_size, weights=priorities)
-        samples = [self.buffer[pos] for pos in indices]
-        importance = self.get_importance(self.get_probabilities(alpha)[indices])
-        return samples, importance, indices
-    
-    def set_priorities(self, indices, errors, offset=0.1):
-        for i, e in zip(indices, errors):
-            # update the priority for the transaction by adding the error on the action taken
-            self.priorities[i] = abs(e[self.buffer[i][1]]) + offset
-
+    def sample(self, batch_size):
+        minibatch = random.sample(self.buffer, k=batch_size)
+        return minibatch
 
 class DQNAgent:
     def __init__(self, env, 
                  discount=0.99, learning_rate=0.001,
-                 epsilon=1, eps_decay=0.999975, eps_min=0.1, 
+                 epsilon=1, eps_decay=0.999977, eps_min=0.1, 
                  replay_memory_size=10000, min_replay_memory_size=1000,
-                 minibatch_size=128, target_update_frequency=5):
+                 minibatch_size=256, target_update_frequency=5):
         self.env = env
         self.obs_space_size = len(env.observation_space.sample())
-        self.importance_in = 1
 
         #q-learning parameters
         self.discount = discount
@@ -132,24 +99,16 @@ class DQNAgent:
     def create_model(self):
         if LOAD_MODEL is not None:
             print(f"Loading {LOAD_MODEL}")
-            model = load_model(LOAD_MODEL, custom_objects={'weighted_mse_loss': self.weighted_mse_loss})
+            model = load_model(LOAD_MODEL)
             print(f"Model {LOAD_MODEL} loaded")
-            model.compile(loss=self.weighted_mse_loss, optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'], run_eagerly=True)
+            # model.compile(loss="mse", optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'])
         else:
             model = Sequential()
             model.add(Dense(128, activation="relu", input_shape=(self.obs_space_size,)))
-            model.add(Dense(128, activation="relu"))
             model.add(Dense(64, activation="relu"))
             model.add(Dense(self.env.action_space.n, activation="linear"))
-            model.compile(loss=self.weighted_mse_loss, optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'], run_eagerly=True)
+            model.compile(loss="mse", optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'])
         return model
-    
-    def weighted_mse_loss(self, y_true, y_pred):
-        importance_float32 = tf.cast(self.importance_in, dtype=tf.float32)
-        importance_reshaped = tf.reshape(importance_float32, [-1, 1])
-        td_error = y_true - y_pred
-        self.losses = tf.square(td_error) * importance_reshaped
-        return tf.reduce_mean(self.losses)
 
     def get_qs(self, state):
         return self.model.predict(np.reshape(state, (1, self.obs_space_size)), verbose=0)[0]
@@ -186,17 +145,13 @@ class DQNAgent:
             return
         
         # Creates minibatch and updates importance
-        minibatch, importance, indices = self.replay_buffer.sample_all(self.minibatch_size)
-        self.importance_in = importance**(1-self.epsilon)
+        minibatch = self.replay_buffer.sample(self.minibatch_size)
 
         # Creates training dataset
         X, y = self.create_train_dataset(minibatch)
         
         self.model.fit(X, y, batch_size = self.minibatch_size, 
                        verbose=0, shuffle=False, callbacks=[self.tensorboard] if done else None)
-        
-        # Sets new priorities
-        self.replay_buffer.set_priorities(indices, self.losses)
         
         if done:
             self.target_update_counter += 1
@@ -216,19 +171,3 @@ class DQNAgent:
             # Get random action
             action = np.random.randint(0, self.env.action_space.n)
         return action
-    
-    def validate(self, steps):
-        ep_rewards = []
-        for episode in range(1, steps+1):
-            current_state = self.env.reset()
-            done = False
-            episode_reward = 0
-            while not done:
-                action = np.argmax(self.get_qs(current_state))
-                new_state, reward, done, _ = self.env.step(action)
-                episode_reward += reward
-                current_state = new_state
-            
-            ep_rewards.append(episode_reward)
-
-        return sum(ep_rewards)/len(ep_rewards)

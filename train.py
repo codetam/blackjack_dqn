@@ -11,21 +11,19 @@ if not os.path.isdir('models'):
 
 TRAIN = True
 
-os.environ["OMP_NUM_THREADS"] = "16"
-tf.config.threading.set_inter_op_parallelism_threads(8) 
-tf.config.threading.set_intra_op_parallelism_threads(8)
-os.environ["TF_ENABLE_MKL_NATIVE_FORMAT"] = "1"
+# os.environ["OMP_NUM_THREADS"] = "16"
+# tf.config.threading.set_inter_op_parallelism_threads(8) 
+# tf.config.threading.set_intra_op_parallelism_threads(8)
+# os.environ["TF_ENABLE_MKL_NATIVE_FORMAT"] = "1"
 
+gpus = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(gpus[0], True)
+logical_gpus = tf.config.list_logical_devices('GPU')
+print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
 
-# gpus = tf.config.list_physical_devices('GPU')
-# tf.config.experimental.set_memory_growth(gpus[0], True)
-# logical_gpus = tf.config.list_logical_devices('GPU')
-# print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-
-EPISODES = 120_000
-
+EPISODES = 200_000
 #  Stats settings
-AGGREGATE_STATS_EVERY = 500  # episodes
+AGGREGATE_STATS_EVERY = 1000  # episodes
 SHOW_PREVIEW = False
 
 # For stats
@@ -60,12 +58,11 @@ if TRAIN:
         ep_rewards.append(episode_reward)
         if not episode % AGGREGATE_STATS_EVERY or episode == 1:
             average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            validation = agent.validate(steps=100)
-            agent.tensorboard.update_stats(train_avg=average_reward, validation_avg=validation, epsilon=agent.epsilon)
+            agent.tensorboard.update_stats(avg_reward=average_reward, epsilon=agent.epsilon)
 
             # Save model, but only when min reward is greater or equal a set value
-            if episode % 15000 == 0 or validation > 0.2:
-                agent.model.save(f'models/{agent.get_model_name()}__{validation:_>7.2f}avg__{int(time.time())}.model')
+            if episode % 20_000 == 0:
+                agent.model.save(f'models/{agent.get_model_name()}_{int(time.time())}.model')
 
-        # tf.keras.backend.clear_session()
+        tf.keras.backend.clear_session()
 
