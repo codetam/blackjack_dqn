@@ -1,5 +1,5 @@
-from gamecode import print_gamestate, hit, dealer_turn, turn_init, get_card_num, calculate_sum
-
+from gamecode import print_gamestate, hit, dealer_turn, turn_init, get_card_num, calculate_sum, print_table
+  
 import gym
 from gym import spaces
 
@@ -97,6 +97,7 @@ class BlackjackEnv(gym.Env):
         reward = factor * result
         return reward
     
-    def render(self):
-        print("\n-------Turn n. {}-------".format(self.turn))
-        print_gamestate(self.dealer_cards, self.player_cards)
+    def render(self, action=-1, done=False, outcome=0):
+        print_gamestate(self.dealer_cards, self.player_cards, self.turn, action, done, outcome)
+        print_table(self.num_decks, self.cards_out)
+    
