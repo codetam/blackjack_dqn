@@ -10,7 +10,7 @@ import time
 import os
 
 MODEL_NAME="128x64-noexp"
-LOAD_MODEL = None
+LOAD_MODEL = "models/128x64-noexp_1701940907.model"
 
 # Own Tensorboard class
 class ModifiedTensorBoard(TensorBoard):
@@ -63,7 +63,7 @@ class ReplayBuffer():
 class DQNAgent:
     def __init__(self, env, 
                  discount=0.99, learning_rate=0.001,
-                 epsilon=1, eps_decay=0.999977, eps_min=0.1, 
+                 epsilon=1, eps_decay=0.99999, eps_min=0.3, 
                  replay_memory_size=10000, min_replay_memory_size=1000,
                  minibatch_size=256, target_update_frequency=5):
         self.env = env
@@ -171,3 +171,19 @@ class DQNAgent:
             # Get random action
             action = np.random.randint(0, self.env.action_space.n)
         return action
+
+    def validate(self, steps):
+        ep_rewards = []
+        for episode in range(1, steps+1):
+            current_state = self.env.reset()
+            done = False
+            episode_reward = 0
+            while not done:
+                action = np.argmax(self.get_qs(current_state))
+                new_state, reward, done, _ = self.env.step(action)
+                episode_reward += reward
+                current_state = new_state
+
+            ep_rewards.append(episode_reward)
+
+        return sum(ep_rewards)/len(ep_rewards)

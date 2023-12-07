@@ -58,11 +58,12 @@ if TRAIN:
         ep_rewards.append(episode_reward)
         if not episode % AGGREGATE_STATS_EVERY or episode == 1:
             average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            agent.tensorboard.update_stats(avg_reward=average_reward, epsilon=agent.epsilon)
+            validation_reward = agent.validate(100)
+            agent.tensorboard.update_stats(epsilon=agent.epsilon, train_reward=average_reward, val_reward=validation_reward)
 
             # Save model, but only when min reward is greater or equal a set value
             if episode % 20_000 == 0:
-                agent.model.save(f'models/{agent.get_model_name()}_{int(time.time())}.model')
+                agent.model.save(f'models/{agent.get_model_name()}_val={validation_reward}_{int(time.time())}.model')
 
         tf.keras.backend.clear_session()
 
