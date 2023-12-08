@@ -67,29 +67,30 @@ class DQNAgent:
         self.obs_space_size = len(env.observation_space.sample())
         self.model_name = model_name
 
-        #q-learning parameters
+        # Q-learning parameters
         self.discount = discount
         self.learning_rate = learning_rate
+        self.minibatch_size = minibatch_size
 
-        # epsilon
+        # Epsilon
         self.epsilon = epsilon
         self.eps_decay = eps_decay
         self.eps_min = eps_min
         
-        # replay buffer
+        # Replay buffer
         self.min_replay_memory_size = min_replay_memory_size
         self.replay_buffer = ReplayBuffer(maxlen=replay_memory_size)
 
-        # main model, this is trained every step
+        # Main model, this is trained every step
         self.model = self.create_model(loaded_model)
-        # target model, this is predicted every step
+        # Target model, this is used for predictions during training
         self.target_model = self.create_model(loaded_model)
         self.target_model.set_weights(self.model.get_weights())
         self.target_update_frequency = target_update_frequency
-        self.minibatch_size = minibatch_size
 
         self.tensorboard = ModifiedTensorBoard(log_dir=f"logs/{self.model_name}-{int(time.time())}")
-        self.target_update_counter = 0 # track when we're ready to update the target model
+        # it tracks when we're ready to update the target model
+        self.target_update_counter = 0 
 
     def get_model_name(self):
         return self.model_name
@@ -109,12 +110,14 @@ class DQNAgent:
         return model
 
     def get_qs(self, states, batch_size=1):
-        return self.model.predict(np.reshape(states, (batch_size, self.obs_space_size)), verbose=0)[0]
+        return self.model.predict(np.reshape(states, (batch_size, self.obs_space_size)), verbose=0)
     
     def create_train_dataset(self, minibatch):
+        # Finds Q-values of the initial state in the transitions
         current_states = np.reshape([transition[0] for transition in minibatch], (self.minibatch_size, self.obs_space_size))
         current_qs_list = self.model.predict(current_states, verbose=0)
 
+        # Finds Q-values of the final state in the transitions
         new_current_states = np.reshape([transition[3] for transition in minibatch], (self.minibatch_size, self.obs_space_size))
         future_qs_list = self.target_model.predict(new_current_states, verbose=0)
 
@@ -126,7 +129,8 @@ class DQNAgent:
                 max_future_q = np.max(future_qs_list[index])
                 new_q = reward + self.discount * max_future_q
             else:
-                new_q = reward # since there is no future q
+                # Since there is no future q
+                new_q = reward 
             
             # Updates Q-value of the current (action,state) pair in the transition
             current_qs = current_qs_list[index]
@@ -142,7 +146,7 @@ class DQNAgent:
         if self.replay_buffer.len() < self.min_replay_memory_size:
             return
         
-        # Creates minibatch and updates importance
+        # Creates minibatch
         minibatch = self.replay_buffer.sample(self.minibatch_size)
 
         # Creates training dataset
@@ -160,16 +164,15 @@ class DQNAgent:
             self.target_model.set_weights(self.model.get_weights())
             self.target_update_counter = 0
 
-
+    # Epsilon-greedy policy
     def get_action(self, current_state):
         if np.random.random() > self.epsilon:
-            # Get action from Q table
-            action = np.argmax(self.get_qs(current_state))
+            action = np.argmax(self.get_qs(current_state)[0])
         else:
-            # Get random action
             action = np.random.randint(0, self.env.action_space.n)
         return action
 
+    # Validates the network by only selecting the greedy action
     def validate(self, steps):
         ep_rewards = []
         for episode in range(1, steps+1):
@@ -177,12 +180,11 @@ class DQNAgent:
             done = False
             episode_reward = 0
             while not done:
-                action = np.argmax(self.get_qs(current_state))
+                action = np.argmax(self.get_qs(current_state)[0])
                 new_state, reward, done, _ = self.env.step(action)
                 episode_reward += reward
                 current_state = new_state
-
             ep_rewards.append(episode_reward)
-
+            
         return sum(ep_rewards)/len(ep_rewards)
     
