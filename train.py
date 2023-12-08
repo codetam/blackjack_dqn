@@ -9,6 +9,8 @@ import time
 if not os.path.isdir('models'):
     os.makedirs('models')
 
+MODEL_NAME = "128x64-noexp"
+LOAD_MODEL = "models/128x64-noexp_1701940907.model"
 TRAIN = True
 
 # os.environ["OMP_NUM_THREADS"] = "16"
@@ -31,7 +33,7 @@ ep_rewards = [0]
 
 env = BlackjackEnv(2)
 
-agent = DQNAgent(env)
+agent = DQNAgent(env=env, loaded_model=LOAD_MODEL, model_name=MODEL_NAME)
 
 if TRAIN:
     for episode in tqdm(range(1, EPISODES+1), total=EPISODES, position=0, leave=True, ascii=True, unit='episodes'):

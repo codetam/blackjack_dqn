@@ -9,9 +9,6 @@ import random
 import time
 import os
 
-MODEL_NAME="128x64-noexp"
-LOAD_MODEL = "models/128x64-noexp_1701940907.model"
-
 # Own Tensorboard class
 class ModifiedTensorBoard(TensorBoard):
     def __init__(self, **kwargs):
@@ -61,13 +58,14 @@ class ReplayBuffer():
         return minibatch
 
 class DQNAgent:
-    def __init__(self, env, 
+    def __init__(self, env, loaded_model=None, model_name="model",
                  discount=0.99, learning_rate=0.001,
                  epsilon=1, eps_decay=0.99999, eps_min=0.3, 
                  replay_memory_size=10000, min_replay_memory_size=1000,
                  minibatch_size=256, target_update_frequency=5):
         self.env = env
         self.obs_space_size = len(env.observation_space.sample())
+        self.model_name = model_name
 
         #q-learning parameters
         self.discount = discount
@@ -83,24 +81,24 @@ class DQNAgent:
         self.replay_buffer = ReplayBuffer(maxlen=replay_memory_size)
 
         # main model, this is trained every step
-        self.model = self.create_model()
+        self.model = self.create_model(loaded_model)
         # target model, this is predicted every step
-        self.target_model = self.create_model()
+        self.target_model = self.create_model(loaded_model)
         self.target_model.set_weights(self.model.get_weights())
         self.target_update_frequency = target_update_frequency
         self.minibatch_size = minibatch_size
 
-        self.tensorboard = ModifiedTensorBoard(log_dir=f"logs/{MODEL_NAME}-{int(time.time())}")
+        self.tensorboard = ModifiedTensorBoard(log_dir=f"logs/{self.model_name}-{int(time.time())}")
         self.target_update_counter = 0 # track when we're ready to update the target model
 
     def get_model_name(self):
-        return MODEL_NAME
+        return self.model_name
 
-    def create_model(self):
-        if LOAD_MODEL is not None:
-            print(f"Loading {LOAD_MODEL}")
-            model = load_model(LOAD_MODEL)
-            print(f"Model {LOAD_MODEL} loaded")
+    def create_model(self, loaded_model):
+        if loaded_model is not None:
+            print(f"Loading {loaded_model}")
+            model = load_model(loaded_model)
+            print(f"Model {loaded_model} loaded")
             # model.compile(loss="mse", optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'])
         else:
             model = Sequential()
@@ -110,8 +108,8 @@ class DQNAgent:
             model.compile(loss="mse", optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'])
         return model
 
-    def get_qs(self, state):
-        return self.model.predict(np.reshape(state, (1, self.obs_space_size)), verbose=0)[0]
+    def get_qs(self, states, batch_size=1):
+        return self.model.predict(np.reshape(states, (batch_size, self.obs_space_size)), verbose=0)[0]
     
     def create_train_dataset(self, minibatch):
         current_states = np.reshape([transition[0] for transition in minibatch], (self.minibatch_size, self.obs_space_size))
@@ -187,3 +185,4 @@ class DQNAgent:
             ep_rewards.append(episode_reward)
 
         return sum(ep_rewards)/len(ep_rewards)
+    
