@@ -32,17 +32,26 @@ def calculate_sum(cards):
     if result > 21:
         result = -1
     return result
-    
+
+def check_soft_hand(player_cards):
+    player_card_numbers = np.array([get_card_num(card) for card in player_cards])
+    sum = np.sum(player_card_numbers)
+    # If the current sum is soft
+    if 1 in player_card_numbers and (sum + 10) <= 21:
+        return 1
+    return 0
+
 def hit(player_cards, deck, cards_out):
     # first index = 0
     player_index = np.where(player_cards == 0)[0][0]
     # first index != 0
     deck_index = np.where(deck != 0)[0][0]
-    player_cards[player_index] = deck[deck_index]
+    pl_cards = np.copy(player_cards)
+    pl_cards[player_index] = deck[deck_index]
     cards_out[get_card_num(deck[deck_index]) - 1] += 1
     deck[deck_index] = 0
-    result = calculate_sum(player_cards)
-    return player_cards, deck, cards_out, result
+    result = calculate_sum(pl_cards)
+    return pl_cards, deck, cards_out, result
 
 def dealer_turn(dealer_cards, player_cards, deck, cards_out):
     result = 0
