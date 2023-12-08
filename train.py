@@ -1,5 +1,5 @@
-from blackjack import BlackjackEnv
-from dqn import DQNAgent
+from blackjack_envs import BlackjackEnv
+from agents.dqn import DQNAgent
 from tqdm import tqdm
 import time
 import os

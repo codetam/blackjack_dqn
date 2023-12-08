@@ -1,6 +1,6 @@
-from blackjack import BlackjackEnv, BlackjackWithBetEnv
-from dqn import DQNAgent
-from better import BettingAgent
+from blackjack_envs import BlackjackEnv, BlackjackWithBetEnv
+from agents.dqn import DQNAgent
+from agents.better import BettingAgent
 
 blackjack_env = BlackjackEnv(2)
 agent = DQNAgent(env=blackjack_env, epsilon=0, loaded_model="models/128x64_noexp_2")

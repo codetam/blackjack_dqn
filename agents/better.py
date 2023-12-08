@@ -1,5 +1,5 @@
 import numpy as np
-from blackjack import calculate_sum, check_soft_hand
+from gamecode import calculate_sum, check_soft_hand
 
 class BettingAgent():
     def __init__(self, env, dqnAgent, max_bet):

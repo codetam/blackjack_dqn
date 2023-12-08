@@ -113,7 +113,6 @@ def print_table(num_decks, cards_out):
     drawing_percentages = [(4 * num_decks - value) / total_cards_in_deck for value in cards_out]
     drawing_percentages[9] = (16 * num_decks - cards_out[9]) / total_cards_in_deck
     
-    
     for i in range(cards_out.size):
         if i == 9:
             total = 16 * num_decks
