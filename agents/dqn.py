@@ -62,7 +62,7 @@ class DQNAgent:
                  discount=0.99, learning_rate=0.001,
                  epsilon=1, eps_decay=0.99999, eps_min=0.3, 
                  replay_memory_size=10000, min_replay_memory_size=1000,
-                 minibatch_size=256, target_update_frequency=5):
+                 minibatch_size=128, target_update_frequency=1000):
         self.env = env
         self.obs_space_size = len(env.observation_space.sample())
         self.model_name = model_name
@@ -103,8 +103,10 @@ class DQNAgent:
             # model.compile(loss="mse", optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'])
         else:
             model = Sequential()
-            model.add(Dense(128, activation="relu", input_shape=(self.obs_space_size,)))
+            model.add(Dense(256, activation="relu", input_shape=(self.obs_space_size,)))
+            model.add(Dense(128, activation="relu"))
             model.add(Dense(64, activation="relu"))
+            model.add(Dense(32, activation="relu"))
             model.add(Dense(self.env.action_space.n, activation="linear"))
             model.compile(loss="mse", optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'])
         return model
@@ -113,32 +115,24 @@ class DQNAgent:
         return self.model.predict(np.reshape(states, (batch_size, self.obs_space_size)), verbose=0)
     
     def create_train_dataset(self, minibatch):
-        # Finds Q-values of the initial state in the transitions
         current_states = np.reshape([transition[0] for transition in minibatch], (self.minibatch_size, self.obs_space_size))
-        current_qs_list = self.model.predict(current_states, verbose=0)
-
-        # Finds Q-values of the final state in the transitions
+        actions = np.array([transition[1] for transition in minibatch])
+        rewards = np.array([transition[2] for transition in minibatch])
         new_current_states = np.reshape([transition[3] for transition in minibatch], (self.minibatch_size, self.obs_space_size))
-        future_qs_list = self.target_model.predict(new_current_states, verbose=0)
+        done = np.array([transition[4] for transition in minibatch])
+        done = done + 0
 
-        X = []
-        y = []
+        q_next = self.target_model.predict(new_current_states, verbose=0)
+        q_eval = self.model.predict(new_current_states, verbose=0)
+        q_pred = self.model.predict(current_states, verbose=0)
+        q_target = np.copy(q_pred)
 
-        for index, (current_state, action, reward, new_current_state, done) in enumerate(minibatch):
-            if not done:
-                max_future_q = np.max(future_qs_list[index])
-                new_q = reward + self.discount * max_future_q
-            else:
-                # Since there is no future q
-                new_q = reward 
-            
-            # Updates Q-value of the current (action,state) pair in the transition
-            current_qs = current_qs_list[index]
-            current_qs[action] = new_q
+        max_actions = np.argmax(q_eval, axis=1)
+        batch_index = np.arange(self.minibatch_size, dtype = np.int32)
 
-            X.append(np.reshape(current_state, (self.obs_space_size, )))
-            y.append(current_qs)
-        return np.array(X), np.array(y)
+        q_target[batch_index, actions] = rewards + self.discount * q_next[batch_index, max_actions.astype(int)] * (1 - done)
+        
+        return current_states, q_target
 
     def train(self, current_state, action, reward, new_state, done):
         # Adds experience to the replay buffer

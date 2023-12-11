@@ -9,8 +9,8 @@ import time
 if not os.path.isdir('models'):
     os.makedirs('models')
 
-MODEL_NAME = "128x64-noexp"
-LOAD_MODEL = "models/128x64-noexp_1701940907.model"
+MODEL_NAME = "256x128x64x32"
+LOAD_MODEL = None
 TRAIN = True
 
 # os.environ["OMP_NUM_THREADS"] = "16"
@@ -23,7 +23,7 @@ tf.config.experimental.set_memory_growth(gpus[0], True)
 logical_gpus = tf.config.list_logical_devices('GPU')
 print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
 
-EPISODES = 200_000
+EPISODES = 800_000
 #  Stats settings
 AGGREGATE_STATS_EVERY = 1000  # episodes
 SHOW_PREVIEW = False
@@ -33,7 +33,7 @@ ep_rewards = [0]
 
 env = BlackjackEnv(2)
 
-agent = DQNAgent(env=env, loaded_model=LOAD_MODEL, model_name=MODEL_NAME)
+agent = DQNAgent(env=env, epsilon=1, eps_decay=0.999995, eps_min=0.01, loaded_model=LOAD_MODEL, model_name=MODEL_NAME)
 
 if TRAIN:
     for episode in tqdm(range(1, EPISODES+1), total=EPISODES, position=0, leave=True, ascii=True, unit='episodes'):
@@ -60,11 +60,11 @@ if TRAIN:
         ep_rewards.append(episode_reward)
         if not episode % AGGREGATE_STATS_EVERY or episode == 1:
             average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            validation_reward = agent.validate(100)
+            validation_reward = agent.validate(200)
             agent.tensorboard.update_stats(epsilon=agent.epsilon, train_reward=average_reward, val_reward=validation_reward)
 
             # Save model, but only when min reward is greater or equal a set value
-            if episode % 20_000 == 0:
+            if episode % 50_000 == 0 or validation_reward > 0.2:
                 agent.model.save(f'models/{agent.get_model_name()}_val={validation_reward}_{int(time.time())}.model')
 
         tf.keras.backend.clear_session()
