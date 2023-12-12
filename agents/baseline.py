@@ -32,7 +32,7 @@ blackjack_soft_chart = [
     [1, 1, 2, 2, 2, 1, 1, 1, 1, 1], # sum = 15
     [1, 1, 2, 2, 2, 1, 1, 1, 1, 1], # sum = 16
     [1, 2, 2, 2, 2, 1, 1, 1, 1, 1], # sum = 17
-    [0, 0, 0, 0, 0, 0, 0, 1, 1, 1], # sum = 18
+    [3, 3, 3, 3, 3, 0, 0, 1, 1, 1], # sum = 18
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], # sum = 19
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], # sum = 20
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # sum = 21
@@ -42,7 +42,7 @@ class BaselineAgent():
     def get_action(self, current_state):
         state = np.array(current_state)
         current_sum = (state[10] * 21).astype(int)
-        dealer_card = (state[11] * 10).astype(int)
+        dealer_card = (state[11] * 11).astype(int)
         has_soft = state[12].astype(int)
         if has_soft:
             chart = blackjack_soft_chart
@@ -50,4 +50,11 @@ class BaselineAgent():
         else:
             chart = blackjack_hard_chart
             action = chart[current_sum - 4][dealer_card - 2]
+        if state[13] != 1:
+            if action == 2:
+                action = 1
+            elif action == 3:
+                action = 0
+        if action == 3:
+            return 2
         return action
