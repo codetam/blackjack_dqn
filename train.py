@@ -68,4 +68,3 @@ if TRAIN:
                 agent.model.save(f'models/{agent.get_model_name()}_val={validation_reward}_{int(time.time())}.model')
 
         tf.keras.backend.clear_session()
-

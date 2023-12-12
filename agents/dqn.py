@@ -124,6 +124,8 @@ class DQNAgent:
 
         q_next = self.target_model.predict(new_current_states, verbose=0)
         q_eval = self.model.predict(new_current_states, verbose=0)
+        # We never consider doubling down as an option for the next state
+        q_eval = q_eval[:, :-1]
         q_pred = self.model.predict(current_states, verbose=0)
         q_target = np.copy(q_pred)
 
@@ -159,26 +161,32 @@ class DQNAgent:
             self.target_update_counter = 0
 
     # Epsilon-greedy policy
-    def get_action(self, current_state):
-        if np.random.random() > self.epsilon:
-            action = np.argmax(self.get_qs(current_state)[0])
+    def get_action(self, current_state, greedy=False):
+        # The player can double-down only in the first stage of the game
+        if current_state[13] == 1:
+            qs = self.get_qs(current_state)[0]
+            alternatives = self.env.action_space.n
         else:
-            action = np.random.randint(0, self.env.action_space.n)
+            qs = self.get_qs(current_state)[0][:2]
+            alternatives = self.env.action_space.n - 1
+        
+        if np.random.random() > self.epsilon or greedy:
+            action = np.argmax(qs)
+        else:
+            action = np.random.randint(0, alternatives)
         return action
 
     # Validates the network by only selecting the greedy action
     def validate(self, steps):
-        ep_rewards = []
+        total_reward = 0
         for episode in range(1, steps+1):
             current_state = self.env.reset()
             done = False
-            episode_reward = 0
             while not done:
-                action = np.argmax(self.get_qs(current_state)[0])
+                action = self.get_action(current_state, greedy=True)
                 new_state, reward, done, _ = self.env.step(action)
-                episode_reward += reward
                 current_state = new_state
-            ep_rewards.append(episode_reward)
+            total_reward += reward
             
-        return sum(ep_rewards)/len(ep_rewards)
+        return total_reward/steps
     

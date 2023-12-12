@@ -12,7 +12,7 @@ class BlackjackWithBetEnv(gym.Env):
         self.blackjackEnv = blackjackEnv
         self.playerAgent = playerAgent
         self.action_space = spaces.Discrete(max_bet + 1)
-        self.observation_space = spaces.Box(0, 1, shape=(13,))
+        self.observation_space = spaces.Box(0, 1, shape=(14,))
     
     def reset(self, seed=None):
         observation = self.blackjackEnv.reset(init_hands=False)
@@ -53,15 +53,16 @@ class BlackjackEnv(gym.Env):
         # 1 -> Hit
         # 2 -> Double down
         self.action_space = spaces.Discrete(3)
-        self.observation_space = spaces.Box(0, 1, shape=(13,))
+        self.observation_space = spaces.Box(0, 1, shape=(14,))
         self.num_decks = num_decks
         self.turn = 0
         self.max_turn = 13
+        self.first_hand = 1
 
 
     def get_obs(self):
         # normalization of cards out
-        box_obs = np.empty((13,), dtype=np.float32)
+        box_obs = np.empty((14,), dtype=np.float32)
         box_obs[:9] = self.cards_out[:-1] / (4 * self.num_decks)
         box_obs[9] = self.cards_out[-1] / (16 * self.num_decks)
         
@@ -70,6 +71,7 @@ class BlackjackEnv(gym.Env):
         box_obs[11] = get_card_num(self.dealer_cards[0]) / 10
 
         box_obs[12] = check_soft_hand(self.player_cards)
+        box_obs[13] = self.first_hand
         return (box_obs)
     
     def initialize_hands(self):
@@ -89,6 +91,7 @@ class BlackjackEnv(gym.Env):
             self.cards_out = np.zeros((10,), dtype=np.int8)
         else:
             self.turn += 1
+        self.first_hand = 1
         self.player_cards = np.zeros((10,), dtype=np.int8)
         self.dealer_cards = np.zeros((10,), dtype=np.int8)
 
@@ -100,6 +103,7 @@ class BlackjackEnv(gym.Env):
 
     def step(self, action):
         assert self.action_space.contains(action)
+        self.first_hand = 0
         is_done = True
         # player chose to stand
         if action == 0:
