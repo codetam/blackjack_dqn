@@ -76,6 +76,9 @@ class BettingAgent():
     def get_expected_return(self, current_state):
         self.fill_buffers(current_state)
         qs_list = self.dqnAgent.get_qs(states=np.array(self.state_buffer), batch_size=len(self.state_buffer))
+        for i in range(len(self.state_buffer)):
+            if self.state_buffer[i][13] != 1:
+                qs_list[i] = qs_list[i][:2]
         max_qs = [max(qs) for qs in qs_list]
         expected_return = 0
         for i in range(len(max_qs)):
@@ -84,8 +87,8 @@ class BettingAgent():
         return expected_return
     
     # Returns the bet amount
-    def get_action(self, current_state):
+    def get_action(self, current_state, min_expected_return=0):
         expected_return = self.get_expected_return(current_state)
-        if expected_return < 0:
+        if expected_return <= min_expected_return:
             expected_return = 0
         return min(expected_return * self.max_bet, self.max_bet)
