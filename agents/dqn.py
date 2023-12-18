@@ -59,10 +59,10 @@ class ReplayBuffer():
 
 class DQNAgent:
     def __init__(self, env, loaded_model=None, model_name="model",
-                 discount=0.99, learning_rate=0.001,
+                 discount=0.99, learning_rate=0.001, double_dqn=False,
                  epsilon=1, eps_decay=0.99999, eps_min=0.3, 
                  replay_memory_size=10000, min_replay_memory_size=1000,
-                 minibatch_size=128, target_update_frequency=1000):
+                 minibatch_size=128, target_update_frequency=500):
         self.env = env
         self.obs_space_size = len(env.observation_space.sample())
         self.model_name = model_name
@@ -71,6 +71,7 @@ class DQNAgent:
         self.discount = discount
         self.learning_rate = learning_rate
         self.minibatch_size = minibatch_size
+        self.double_dqn = double_dqn
 
         # Epsilon
         self.epsilon = epsilon
@@ -103,8 +104,7 @@ class DQNAgent:
             # model.compile(loss="mse", optimizer=Adam(learning_rate=self.learning_rate), metrics=['accuracy'])
         else:
             model = Sequential()
-            model.add(Dense(256, activation="relu", input_shape=(self.obs_space_size,)))
-            model.add(Dense(128, activation="relu"))
+            model.add(Dense(128, activation="relu", input_shape=(self.obs_space_size,)))
             model.add(Dense(64, activation="relu"))
             model.add(Dense(32, activation="relu"))
             model.add(Dense(self.env.action_space.n, activation="linear"))
@@ -123,7 +123,10 @@ class DQNAgent:
         done = done + 0
 
         q_next = self.target_model.predict(new_current_states, verbose=0)
-        q_eval = self.model.predict(new_current_states, verbose=0)
+        if self.double_dqn:
+            q_eval = self.model.predict(new_current_states, verbose=0)
+        else:
+            q_eval = q_next
         # We never consider doubling down as an option for the next state
         q_eval = q_eval[:, :-1]
         q_pred = self.model.predict(current_states, verbose=0)
