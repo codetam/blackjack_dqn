@@ -9,21 +9,16 @@ import time
 if not os.path.isdir('models'):
     os.makedirs('models')
 
-MODEL_NAME = "256x128x64x32"
-LOAD_MODEL = None
+MODEL_NAME = "128x64x32"
+LOAD_MODEL = "models/128x64x32_val=-0.295_1702616628.model"
 TRAIN = True
-
-# os.environ["OMP_NUM_THREADS"] = "16"
-# tf.config.threading.set_inter_op_parallelism_threads(8) 
-# tf.config.threading.set_intra_op_parallelism_threads(8)
-# os.environ["TF_ENABLE_MKL_NATIVE_FORMAT"] = "1"
 
 gpus = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(gpus[0], True)
 logical_gpus = tf.config.list_logical_devices('GPU')
 print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
 
-EPISODES = 800_000
+EPISODES = 550_000
 #  Stats settings
 AGGREGATE_STATS_EVERY = 1000  # episodes
 SHOW_PREVIEW = False
@@ -33,7 +28,7 @@ ep_rewards = [0]
 
 env = BlackjackEnv(2)
 
-agent = DQNAgent(env=env, epsilon=1, eps_decay=0.999995, eps_min=0.01, loaded_model=LOAD_MODEL, model_name=MODEL_NAME)
+agent = DQNAgent(env=env, epsilon=0.286504, eps_decay=0.999995, eps_min=0.1, loaded_model=LOAD_MODEL, model_name=MODEL_NAME)
 
 if TRAIN:
     for episode in tqdm(range(1, EPISODES+1), total=EPISODES, position=0, leave=True, ascii=True, unit='episodes'):
