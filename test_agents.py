@@ -53,7 +53,7 @@ def print_plot(agent_data, avg_reward, subplot, title, text_pos, line_color):
     ax = plt.gca()
     fig = plt.gcf()
     fig.subplots_adjust(right=0.7)
-    fig.text(0.8,text_pos,f'{title}\nAverage: {str(avg_reward)}')
+    fig.text(0.75,text_pos,f'{title}\nAverage: {str(avg_reward)}',fontsize=18)
     ax.clear()
     ax.set_xlabel('Number of plays')
     ax.set_ylabel('Average reward per game')

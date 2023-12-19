@@ -23,7 +23,7 @@ for i in range(num_turns):
     betting_env.render()
     print("Expected return: ", better.get_expected_return(current_state))
 
-    action = better.get_action(current_state, min_expected_return=0.15)
+    action = better.get_action(current_state, min_expected_return=0)
     new_state, reward, done, _ = betting_env.step(int(action), render_steps=True)
     stake += reward
     current_state = new_state
