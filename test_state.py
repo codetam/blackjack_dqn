@@ -8,9 +8,9 @@ blackjack_env = BlackjackEnv(2)
 DQN_model = 'models/128x64x32_val=-0.165_1702903139.model'
 agent = DQNAgent(env=blackjack_env, epsilon=0, loaded_model=DQN_model)
 
-cards_out = np.array([4,5,7,5,2,4,6,2,5,24])
-player_sum = 17
-dealer_card = 10
+cards_out = np.array([8,8,8,8,8,8,8,8,8,0])
+player_sum = 13
+dealer_card = 5
 soft_hand = 0
 first_hand = 1
 
